@@ -1,0 +1,50 @@
+# ===== Web Framework =====
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+python-multipart==0.0.20
+
+# ===== Database =====
+sqlalchemy[asyncio]==2.0.41
+asyncpg==0.30.0
+alembic==1.15.2
+psycopg2-binary==2.9.10
+
+# ===== Validation & Serialization =====
+pydantic==2.11.3
+pydantic-settings==2.9.1
+
+# ===== Caching =====
+redis[hiredis]==5.3.0
+
+# ===== ML & Data Science =====
+numpy==2.2.6
+pandas==2.2.3
+scikit-learn==1.6.1
+xgboost==3.0.0
+joblib==1.4.2
+
+# ===== Deep Learning (LSTM delay propagation) =====
+torch==2.7.1
+torchvision==0.22.1
+
+# ===== Graph Algorithms =====
+networkx==3.4.2
+
+# ===== LLM Integration (Ollama - local) =====
+ollama==0.4.8
+langchain==0.3.25
+langchain-ollama==0.3.3
+langchain-community==0.3.24
+
+# ===== HTTP & Async =====
+httpx==0.28.1
+aiofiles==24.1.0
+
+# ===== Testing =====
+pytest==8.3.5
+pytest-asyncio==0.26.0
+pytest-cov==6.1.1
+
+# ===== Utilities =====
+python-dotenv==1.1.0
+python-dateutil==2.9.0

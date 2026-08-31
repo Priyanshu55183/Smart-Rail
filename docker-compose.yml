@@ -1,0 +1,97 @@
+# =============================================
+# SmartRail — Docker Compose
+# =============================================
+# Starts the entire application with: docker compose up
+#
+# Services:
+#   postgres  → Database (stores stations, trains, schedules, delays)
+#   redis     → Cache (fast search results, station autocomplete)
+#   backend   → FastAPI server (REST API + AI engine)
+#   frontend  → Next.js app (will be added after frontend setup)
+#
+# Services talk to each other using service names as hostnames:
+#   backend connects to "postgres:5432" and "redis:6379"
+#   frontend connects to "backend:8000"
+
+services:
+
+  # ── PostgreSQL 16 ─────────────────────────────────
+  # Why PostgreSQL?
+  # - Rock-solid relational DB, industry standard
+  # - Excellent indexing (critical for our train_stops queries)
+  # - Supports complex JOINs (train_stops × stations × trains)
+  # - Extensions like pgvector for future semantic search
+  postgres:
+    image: postgres:16-alpine
+    container_name: smartrail-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-smartrail}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-smartrail_secret_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-smartrail}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartrail"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis 7 ───────────────────────────────────────
+  # Why Redis?
+  # - In-memory cache: ~1ms reads vs ~30-50ms for PostgreSQL
+  # - Station searches are cached for 24h (data rarely changes)
+  # - Journey results cached for 30min (availability changes)
+  # - Reduces DB load by 80-90% for repeated searches
+  redis:
+    image: redis:7-alpine
+    container_name: smartrail-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── FastAPI Backend ───────────────────────────────
+  # The AI-powered journey search engine.
+  # Waits for PostgreSQL and Redis to be healthy before starting.
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: smartrail-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount code for hot-reload during development
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── Next.js Frontend (added later) ────────────────
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   container_name: smartrail-frontend
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - backend
+
+volumes:
+  postgres_data:    # Persist database across container restarts
+  redis_data:       # Persist Redis cache (optional, cache is ephemeral by nature)

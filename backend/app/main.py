@@ -18,6 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.database.postgres import init_db, close_db
 from app.database.redis import init_redis, close_redis
+from app.seed.seed_loader import seed_all
 
 # Import all models so Base.metadata knows about them
 import app.models  # noqa: F401
@@ -49,6 +50,9 @@ async def lifespan(app: FastAPI):
     print("📦 Connecting to PostgreSQL...")
     await init_db()
     print("✅ PostgreSQL connected & tables created")
+
+    # 1b. Seed data (idempotent — skips if already seeded)
+    await seed_all()
 
     # 2. Redis
     print("🔴 Connecting to Redis...")

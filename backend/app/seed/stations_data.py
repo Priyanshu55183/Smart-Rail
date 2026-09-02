@@ -147,7 +147,6 @@ STATIONS_DATA = [
     ("GOA", "Goa (Madgaon)", "Madgaon", "Goa", "KR", "B", 15.2843, 74.0023, False, 20, 3),
     ("RJT", "Rajkot Junction", "Rajkot", "Gujarat", "WR", "B", 22.3019, 70.7912, True, 25, 5),
     ("INDB", "Indore Junction", "Indore", "Madhya Pradesh", "WR", "A", 22.7183, 75.8016, True, 30, 6),
-    ("GWL", "Gwalior Junction", "Gwalior", "Madhya Pradesh", "NCR", "B", 26.2206, 78.1826, True, 25, 5),
     ("NJP", "New Jalpaiguri Junction", "Siliguri", "West Bengal", "NFR", "A", 26.6972, 88.4310, True, 30, 7),
     ("GHY", "Guwahati", "Guwahati", "Assam", "NFR", "A", 26.1760, 91.7542, True, 30, 8),
     ("DBRG", "Dibrugarh Town", "Dibrugarh", "Assam", "NFR", "B", 27.4823, 94.8940, False, 20, 4),

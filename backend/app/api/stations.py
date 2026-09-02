@@ -60,23 +60,49 @@ async def search_stations(
     if cached is not None:
         return StationSearchResponse(**cached)
 
-    # 2. Query PostgreSQL with fuzzy matching
-    # Match against code, name, and city using ILIKE (case-insensitive LIKE)
-    search_pattern = f"%{query_lower}%"
+    # Common Indian city aliases/synonyms
+    CITY_ALIASES = {
+        "bang": "bengaluru",
+        "bangalore": "bengaluru",
+        "bombay": "mumbai",
+        "calcutta": "kolkata",
+        "madras": "chennai",
+        "trivandrum": "thiruvananthapuram",
+        "cochin": "kochi",
+        "banaras": "varanasi",
+        "benares": "varanasi",
+        "allahabad": "prayagraj",
+        "baroda": "vadodara",
+        "poona": "pune",
+        "calicut": "kozhikode",
+    }
+
+    query_upper = query_lower.upper()
+    search_terms = [query_lower]
+    for alias_key, target in CITY_ALIASES.items():
+        if alias_key in query_lower:
+            search_terms.append(target)
+
+    # 2. Query PostgreSQL with fuzzy matching across terms
+    conditions = []
+    for term in search_terms:
+        term_pattern = f"%{term}%"
+        conditions.extend([
+            Station.code.ilike(term_pattern),
+            Station.name.ilike(term_pattern),
+            Station.city.ilike(term_pattern),
+            Station.state.ilike(term_pattern),
+        ])
+
+    from sqlalchemy import case
+
     stmt = (
         select(Station)
-        .where(
-            or_(
-                func.lower(Station.code).contains(query_lower),
-                func.lower(Station.name).contains(query_lower),
-                func.lower(Station.city).contains(query_lower),
-            )
-        )
-        # Sort: exact code match first, then junctions, then alphabetical
+        .where(or_(*conditions))
+        # Sort: exact code match first, then junctions, then name
         .order_by(
-            # Exact code match gets priority (0 sorts before 1)
-            (func.lower(Station.code) != query_lower.upper()).asc(),
-            Station.is_junction.desc(),  # Junctions are more important
+            case((func.upper(Station.code) == query_upper, 0), else_=1),
+            Station.is_junction.desc(),
             Station.name.asc(),
         )
         .limit(limit)

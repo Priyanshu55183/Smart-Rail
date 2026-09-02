@@ -81,16 +81,21 @@ services:
       redis:
         condition: service_healthy
 
-  # ── Next.js Frontend (added later) ────────────────
-  # frontend:
-  #   build:
-  #     context: ./frontend
-  #     dockerfile: Dockerfile
-  #   container_name: smartrail-frontend
-  #   ports:
-  #     - "3000:3000"
-  #   depends_on:
-  #     - backend
+  # ── Next.js Frontend ────────────────────────────
+  # The beautiful dark-mode UI for SmartRail.
+  # Proxies /api/* requests to the backend via Next.js rewrites.
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: smartrail-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+    depends_on:
+      - backend
 
 volumes:
   postgres_data:    # Persist database across container restarts

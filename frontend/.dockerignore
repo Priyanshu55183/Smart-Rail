@@ -1,0 +1,4 @@
+# Extend project gitignore for frontend
+node_modules/
+.next/
+out/

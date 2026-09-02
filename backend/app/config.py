@@ -25,9 +25,9 @@ class Settings(BaseSettings):
 
     # ── Database (PostgreSQL) ─────────────────────────────
     # asyncpg connection string for SQLAlchemy async engine
-    DATABASE_URL: str = "postgresql+asyncpg://smartrail:smartrail@localhost:5432/smartrail"
+    DATABASE_URL: str = "postgresql+asyncpg://smartrail:smartrail_secret_2026@localhost:5432/smartrail"
     # sync connection string for Alembic migrations (alembic can't use async)
-    DATABASE_URL_SYNC: str = "postgresql://smartrail:smartrail@localhost:5432/smartrail"
+    DATABASE_URL_SYNC: str = "postgresql://smartrail:smartrail_secret_2026@localhost:5432/smartrail"
     DB_POOL_SIZE: int = 20
     DB_MAX_OVERFLOW: int = 10
 
@@ -95,9 +95,10 @@ class Settings(BaseSettings):
     SEED_DAYS_OF_RUNS: int = 90
 
     model_config = {
-        "env_file": ".env",
+        "env_file": ("../.env", ".env"),
         "env_file_encoding": "utf-8",
         "case_sensitive": True,
+        "extra": "ignore",
     }
 
 

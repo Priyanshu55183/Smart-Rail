@@ -73,34 +73,43 @@ def get_redis() -> Redis:
 
 async def cache_get(key: str) -> Optional[Any]:
     """
-    Get a value from cache. Returns None on cache miss.
+    Get a value from cache. Returns None on cache miss or Redis failure.
     Automatically deserializes JSON.
     """
-    redis = get_redis()
-    value = await redis.get(key)
-    if value is None:
-        return None
     try:
-        return json.loads(value)
-    except (json.JSONDecodeError, TypeError):
-        return value
+        redis = get_redis()
+        value = await redis.get(key)
+        if value is None:
+            return None
+        try:
+            return json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            return value
+    except Exception:
+        return None
 
 
 async def cache_set(key: str, value: Any, ttl: Optional[int] = None) -> None:
     """
     Set a value in cache with optional TTL (seconds).
-    Automatically serializes to JSON.
+    Silently skips on Redis failure.
     """
-    redis = get_redis()
-    ttl = ttl or settings.CACHE_TTL_SECONDS
-    serialized = json.dumps(value, default=str)
-    await redis.set(key, serialized, ex=ttl)
+    try:
+        redis = get_redis()
+        ttl = ttl or settings.CACHE_TTL_SECONDS
+        serialized = json.dumps(value, default=str)
+        await redis.set(key, serialized, ex=ttl)
+    except Exception:
+        pass
 
 
 async def cache_delete(key: str) -> None:
     """Delete a specific cache key."""
-    redis = get_redis()
-    await redis.delete(key)
+    try:
+        redis = get_redis()
+        await redis.delete(key)
+    except Exception:
+        pass
 
 
 async def cache_delete_pattern(pattern: str) -> None:

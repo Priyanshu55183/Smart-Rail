@@ -270,6 +270,69 @@ function TrainSegmentBlock({ seg }) {
             </span>
           )}
         </div>
+
+        {/* Seat Availability & Waitlist Status Badges */}
+        {seg.availabilities && seg.availabilities.length > 0 && (
+          <div style={{
+            display: 'flex',
+            gap: '8px',
+            marginTop: '12px',
+            flexWrap: 'wrap',
+          }}>
+            {seg.availabilities.map((avail) => {
+              const isAvail = avail.status === 'AVAILABLE';
+              const isRac = avail.status === 'RAC';
+              const bg = isAvail
+                ? 'rgba(16, 185, 129, 0.10)'
+                : isRac
+                ? 'rgba(245, 158, 11, 0.10)'
+                : 'rgba(239, 68, 68, 0.10)';
+              const border = isAvail
+                ? 'rgba(16, 185, 129, 0.25)'
+                : isRac
+                ? 'rgba(245, 158, 11, 0.25)'
+                : 'rgba(239, 68, 68, 0.25)';
+              const color = isAvail
+                ? 'var(--success-light)'
+                : isRac
+                ? 'var(--warning-light)'
+                : 'var(--danger-light)';
+
+              return (
+                <div
+                  key={avail.travel_class}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    padding: '6px 10px',
+                    background: bg,
+                    border: `1px solid ${border}`,
+                    borderRadius: 'var(--radius-sm)',
+                    fontSize: '11px',
+                    minWidth: '105px',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontWeight: 800, color: 'var(--text-primary)' }}>
+                      {avail.travel_class}
+                    </span>
+                    <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>
+                      ₹{Math.round(avail.fare)}
+                    </span>
+                  </div>
+                  <div style={{ fontWeight: 700, color, marginTop: '2px', fontSize: '11px' }}>
+                    {avail.status_display}
+                  </div>
+                  {avail.status === 'WAITLIST' && avail.confirmation_probability != null && (
+                    <div style={{ fontSize: '9px', color: 'var(--text-tertiary)', marginTop: '1px' }}>
+                      ~{Math.round(avail.confirmation_probability * 100)}% confirm chance
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

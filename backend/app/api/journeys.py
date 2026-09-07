@@ -92,11 +92,15 @@ async def search_journeys(
 
     # ── Run the AI Journey Search Pipeline ────────────────
     # This import is here to avoid circular imports.
-    # The journey_service orchestrates the entire AI pipeline.
-    from app.services.journey_service import JourneySearchService
+    try:
+        from app.services.journey_service import JourneySearchService
 
-    service = JourneySearchService(db)
-    response = await service.search(search_request)
+        service = JourneySearchService(db)
+        response = await service.search(search_request)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Search error: {str(e)}")
 
     # Cache results for 30 minutes
     await cache_set(cache_key, response.model_dump(), ttl=settings.JOURNEY_CACHE_TTL)

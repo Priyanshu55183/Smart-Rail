@@ -1225,8 +1225,158 @@ TRAINS_DATA = [
         "type": "SUPERFAST",
         "runs_on": "Mon,Tue,Wed,Thu,Fri,Sat,Sun",
         "stops": [
-            ("NDLS", "15:50", "15:50", 0, 0, 0),
+            ("NDLS", None, "15:50", 0, 0, 0),
             ("JP", "21:00", None, 0, 0, 308),
+        ]
+    },
+
+    # Train 76: Deccan Queen (PUNE -> CSMT)
+    {
+        "number": "12124",
+        "name": "Deccan Queen Express",
+        "type": "SUPERFAST",
+        "runs_on": "Mon,Tue,Wed,Thu,Fri,Sat,Sun",
+        "stops": [
+            ("PUNE", None, "07:15", 0, 0, 0),
+            ("CSMT", "10:25", None, 0, 0, 192),
+        ]
+    },
+
+    # Train 77: Deccan Queen Return (CSMT -> PUNE)
+    {
+        "number": "12123",
+        "name": "Deccan Queen Express",
+        "type": "SUPERFAST",
+        "runs_on": "Mon,Tue,Wed,Thu,Fri,Sat,Sun",
+        "stops": [
+            ("CSMT", None, "17:10", 0, 0, 0),
+            ("PUNE", "20:25", None, 0, 0, 192),
+        ]
+    },
+
+    # Train 78: Udyan Express Return (CSMT -> SBC)
+    {
+        "number": "11302",
+        "name": "Udyan Express Return",
+        "type": "EXPRESS",
+        "runs_on": "Mon,Tue,Wed,Thu,Fri,Sat,Sun",
+        "stops": [
+            ("CSMT", None, "08:10", 0, 0, 0),
+            ("PUNE", "11:55", "12:05", 0, 10, 192),
+            ("GOA", "22:15", "22:20", 0, 5, 597),
+            ("UBL", "02:10", "02:20", 1, 10, 745),
+            ("SBC", "12:45", None, 1, 0, 1177),
+        ]
+    },
+
+    # Train 79: Karnataka Express Return (NDLS -> SBC)
+    {
+        "number": "12628",
+        "name": "Karnataka Express Return",
+        "type": "SUPERFAST",
+        "runs_on": "Mon,Tue,Wed,Thu,Fri,Sat,Sun",
+        "stops": [
+            ("NDLS", None, "20:20", 0, 0, 0),
+            ("AGC", "23:10", "23:15", 0, 5, 195),
+            ("JHS", "02:05", "02:15", 1, 10, 410),
+            ("BPL", "06:20", "06:30", 1, 10, 701),
+            ("NGP", "12:55", "13:05", 1, 10, 1090),
+            ("SC", "22:10", "22:25", 1, 15, 1675),
+            ("GTL", "03:10", "03:20", 2, 10, 1984),
+            ("YPR", "10:15", "10:20", 2, 5, 2436),
+            ("SBC", "11:00", None, 2, 0, 2444),
+        ]
+    },
+
+    # Train 80: Mumbai Rajdhani Return (NDLS -> BCT)
+    {
+        "number": "12952",
+        "name": "Mumbai Rajdhani Return",
+        "type": "RAJDHANI",
+        "runs_on": "Mon,Tue,Wed,Thu,Fri,Sat,Sun",
+        "stops": [
+            ("NDLS", None, "16:55", 0, 0, 0),
+            ("KOTA", "21:30", "21:35", 0, 5, 465),
+            ("RTM", "00:27", "00:30", 1, 3, 730),
+            ("BRC", "03:40", "03:45", 1, 5, 992),
+            ("BCT", "08:35", None, 1, 0, 1384),
+        ]
+    },
+
+    # Train 81: August Kranti Rajdhani Return (NZM -> BCT)
+    {
+        "number": "12954",
+        "name": "August Kranti Rajdhani Return",
+        "type": "RAJDHANI",
+        "runs_on": "Mon,Tue,Wed,Thu,Fri,Sat,Sun",
+        "stops": [
+            ("NZM", None, "17:15", 0, 0, 0),
+            ("KOTA", "22:00", "22:05", 0, 5, 465),
+            ("BRC", "04:30", "04:35", 1, 5, 992),
+            ("ST", "06:10", "06:15", 1, 5, 1121),
+            ("BCT", "10:05", None, 1, 0, 1384),
+        ]
+    },
+
+    # Train 82: BCT-ADI Shatabdi (BCT -> ADI)
+    {
+        "number": "12009",
+        "name": "Mumbai-Ahmedabad Shatabdi",
+        "type": "SHATABDI",
+        "runs_on": "Mon,Tue,Wed,Thu,Fri,Sat",
+        "stops": [
+            ("BCT", None, "06:20", 0, 0, 0),
+            ("ST", "09:30", "09:33", 0, 3, 263),
+            ("BRC", "11:05", "11:10", 0, 5, 392),
+            ("ADI", "12:45", None, 0, 0, 493),
+        ]
+    },
+
+    # Train 83: ADI-BCT Shatabdi (ADI -> BCT)
+    {
+        "number": "12010",
+        "name": "Ahmedabad-Mumbai Shatabdi",
+        "type": "SHATABDI",
+        "runs_on": "Mon,Tue,Wed,Thu,Fri,Sat",
+        "stops": [
+            ("ADI", None, "15:10", 0, 0, 0),
+            ("BRC", "16:30", "16:35", 0, 5, 100),
+            ("ST", "18:05", "18:08", 0, 3, 230),
+            ("BCT", "21:45", None, 0, 0, 493),
+        ]
+    },
+
+    # Train 84: Tamil Nadu Express Return (NDLS -> MAS)
+    {
+        "number": "12622",
+        "name": "Tamil Nadu Express Return",
+        "type": "SUPERFAST",
+        "runs_on": "Mon,Tue,Wed,Thu,Fri,Sat,Sun",
+        "stops": [
+            ("NDLS", None, "21:05", 0, 0, 0),
+            ("AGC", "00:30", "00:35", 1, 5, 195),
+            ("JHS", "04:10", "04:20", 1, 10, 410),
+            ("BPL", "08:45", "08:55", 1, 10, 701),
+            ("NGP", "15:25", "15:40", 1, 15, 1090),
+            ("SC", "00:40", "00:55", 2, 15, 1675),
+            ("GTL", "06:45", "06:55", 2, 10, 1984),
+            ("MAS", "06:15", None, 3, 0, 2182),
+        ]
+    },
+
+    # Train 85: Howrah Rajdhani Return (NDLS -> HWH)
+    {
+        "number": "12302",
+        "name": "Howrah Rajdhani Return",
+        "type": "RAJDHANI",
+        "runs_on": "Mon,Tue,Wed,Thu,Fri,Sat,Sun",
+        "stops": [
+            ("NDLS", None, "16:50", 0, 0, 0),
+            ("CNB", "21:32", "21:37", 0, 5, 440),
+            ("MGS", "01:45", "01:55", 1, 10, 783),
+            ("GY", "03:40", "03:42", 1, 2, 994),
+            ("DHN", "06:18", "06:20", 1, 2, 1182),
+            ("HWH", "09:55", None, 1, 0, 1447),
         ]
     },
 ]

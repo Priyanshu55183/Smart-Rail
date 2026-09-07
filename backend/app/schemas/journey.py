@@ -65,6 +65,18 @@ class LayoverInfo(BaseModel):
     min_transfer_minutes: int = Field(30, description="Station-specific minimum")
 
 
+# ── Class Availability Schema ─────────────────────────────
+class ClassAvailability(BaseModel):
+    """Availability and fare for a specific travel class."""
+    travel_class: str = Field(..., example="3A", description="SL, 3A, 2A, 1A, CC, 2S")
+    class_name: str = Field(..., example="AC 3 Tier")
+    fare: float = Field(..., example=1250.0)
+    status: str = Field(..., example="AVAILABLE", description="AVAILABLE, RAC, WAITLIST, REGRET")
+    available_seats: int = Field(..., example=24, description="Positive=available seats, negative/number=WL")
+    status_display: str = Field(..., example="AVAILABLE 24", description="Formatted status: AVAILABLE 24, WL 12, RAC 6")
+    confirmation_probability: Optional[float] = Field(None, example=0.88, description="0.0 to 1.0 for WL/RAC")
+
+
 # ── Journey Segment (Train or Layover) ────────────────────
 class TrainSegment(BaseModel):
     """A train ride portion of the journey."""
@@ -96,6 +108,9 @@ class TrainSegment(BaseModel):
         None, example=12,
         description="XGBoost-predicted delay at arrival station"
     )
+
+    # Class-wise Seat Availability & Waitlist status
+    availabilities: list[ClassAvailability] = Field(default_factory=list)
 
 
 class LayoverSegment(BaseModel):

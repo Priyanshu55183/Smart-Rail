@@ -71,6 +71,22 @@ def _minutes_to_display(minutes: int) -> str:
     return f"{hours}h {mins}m"
 
 
+# City clusters for multi-terminal metropolitan areas
+CITY_CLUSTERS = {
+    "MUMBAI": ["CSMT", "BCT", "LTT", "BDTS", "BVI", "CSTM"],
+    "DELHI": ["NDLS", "DLI", "NZM", "ANVT", "DEE"],
+    "BANGALORE": ["SBC", "YPR"],
+    "HYDERABAD": ["SC", "HYB", "KCG"],
+    "KOLKATA": ["HWH", "SDAH", "KOAA"],
+    "CHENNAI": ["MAS", "MS"],
+}
+
+STATION_TO_CLUSTER: dict[str, str] = {}
+for _cluster, _stations in CITY_CLUSTERS.items():
+    for _s in _stations:
+        STATION_TO_CLUSTER[_s] = _cluster
+
+
 class RailwayGraph:
     """
     The built graph containing the NetworkX DiGraph plus lookup tables.
@@ -83,6 +99,8 @@ class RailwayGraph:
 
         # Station code → Station model (for transfer times, names)
         self.stations: dict[str, Station] = {}
+        # Station id → Station code
+        self.station_id_to_code: dict[int, str] = {}
 
         # station_code → list of (departure_time_minutes, node_id, train_info)
         # Used by Dijkstra to find departures from a station after a given time
@@ -146,6 +164,7 @@ class GraphBuilder:
         result = await self.db.execute(select(Station))
         for station in result.scalars().all():
             rg.stations[station.code] = station
+            rg.station_id_to_code[station.id] = station.code
 
     async def _load_trains_and_stops(
         self, rg: RailwayGraph, day_name: str
@@ -271,15 +290,8 @@ class GraphBuilder:
 
     def _create_transfer_edges(self, rg: RailwayGraph) -> None:
         """
-        Create TRANSFER edges between different trains at the same station.
-
-        For each station:
-          For each arriving train (node with arrival_time):
-            Find departing trains (different train) where:
-              departure >= arrival + minimum_transfer_minutes
-            Create edge with weight = waiting time.
-
-        Sort departures by time for efficient lookup.
+        Create TRANSFER edges between different trains at the same station,
+        as well as inter-terminal transfers within the same city cluster.
         """
         # Sort departures at each station by time
         for code in rg.station_departures:
@@ -300,38 +312,56 @@ class GraphBuilder:
                 continue
             min_transfer = station.minimum_transfer_minutes
 
-            # Find valid departures at this station from DIFFERENT trains
-            earliest_departure = arr_minutes + min_transfer
+            # Target stations for transfers: same station + sister stations in same city cluster
+            transfer_targets = [(station_code, min_transfer, False)]
+            cluster_name = STATION_TO_CLUSTER.get(station_code)
+            if cluster_name:
+                for sister_code in CITY_CLUSTERS[cluster_name]:
+                    if sister_code != station_code:
+                        transfer_targets.append((sister_code, min_transfer + 45, True))
 
-            for dep_minutes, dep_node_id, dep_train_number in rg.station_departures[station_code]:
-                # Skip same train (you're already on it!)
-                if dep_train_number == train_number:
-                    continue
+            for target_station, required_buffer, is_city_transfer in transfer_targets:
+                earliest_departure = arr_minutes + required_buffer
 
-                # Too early — need to wait at least min_transfer minutes
-                if dep_minutes < earliest_departure:
-                    continue
+                for dep_minutes, dep_node_id, dep_train_number in rg.station_departures.get(target_station, []):
+                    # Skip same train
+                    if dep_train_number == train_number:
+                        continue
 
-                # Too late — cap at max layover to avoid unreasonable waits
-                wait_time = dep_minutes - arr_minutes
-                if wait_time > settings.DEFAULT_MAX_LAYOVER_MINUTES:
-                    break  # Sorted, so all subsequent are even later
+                    # Too early — need to wait at least required_buffer minutes
+                    if dep_minutes < earliest_departure:
+                        continue
 
-                # Valid transfer!
-                rg.graph.add_edge(
-                    node_id,
-                    dep_node_id,
-                    weight=wait_time,
-                    edge_type="TRANSFER",
-                    station_code=station_code,
-                    station_name=station.name,
-                    wait_minutes=wait_time,
-                    min_transfer=min_transfer,
-                )
-                rg.num_transfer_edges += 1
+                    # Too late — cap at max layover
+                    wait_time = dep_minutes - arr_minutes
+                    if wait_time > settings.DEFAULT_MAX_LAYOVER_MINUTES:
+                        break  # Sorted, so all subsequent are even later
+
+                    target_station_obj = rg.stations.get(target_station)
+                    transfer_name = (
+                        f"Transfer to {target_station_obj.name if target_station_obj else target_station}"
+                        if is_city_transfer
+                        else station.name
+                    )
+
+                    # Valid transfer!
+                    rg.graph.add_edge(
+                        node_id,
+                        dep_node_id,
+                        weight=wait_time,
+                        edge_type="TRANSFER",
+                        station_code=target_station,
+                        station_name=transfer_name,
+                        wait_minutes=wait_time,
+                        min_transfer=required_buffer,
+                        is_city_transfer=is_city_transfer,
+                    )
+                    rg.num_transfer_edges += 1
 
     def _get_station_code(self, rg: RailwayGraph, stop: TrainStop) -> Optional[str]:
         """Look up station code from station_id."""
+        if stop.station_id in rg.station_id_to_code:
+            return rg.station_id_to_code[stop.station_id]
         for code, station in rg.stations.items():
             if station.id == stop.station_id:
                 return code

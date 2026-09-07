@@ -21,7 +21,14 @@ from sqlalchemy import select, and_
 from sqlalchemy.orm import aliased
 
 from app.models import Station, Train, TrainStop, TrainRun, TrainRunStatus
-from app.services.graph_builder import GraphBuilder, RailwayGraph, _time_to_minutes, _minutes_to_display
+from app.services.graph_builder import (
+    GraphBuilder,
+    RailwayGraph,
+    _time_to_minutes,
+    _minutes_to_display,
+    CITY_CLUSTERS,
+    STATION_TO_CLUSTER,
+)
 from app.services.dijkstra import DijkstraRouter, RawPath
 from app.services.scorer import JourneyScorer
 from app.schemas.journey import (
@@ -32,10 +39,73 @@ from app.schemas.journey import (
     TrainSegment,
     LayoverSegment,
     LayoverInfo,
+    ClassAvailability,
 )
 from app.config import get_settings
 
 settings = get_settings()
+
+
+def generate_class_availabilities(distance: Optional[int], train_type: str, train_number: str) -> list[ClassAvailability]:
+    """
+    Generate realistic class-wise seat availability & waitlist status for a train segment.
+    """
+    if not distance or distance <= 0:
+        distance = 500
+
+    # Pricing multipliers per km
+    rates = {
+        "2S": (0.28, "Second Sitting"),
+        "SL": (0.45, "Sleeper"),
+        "CC": (0.95, "AC Chair Car"),
+        "3A": (1.20, "AC 3 Tier"),
+        "2A": (1.75, "AC 2 Tier"),
+        "1A": (2.95, "AC First Class"),
+    }
+
+    if train_type in ("SHATABDI", "VANDE_BHARAT"):
+        active_classes = ["CC", "2A", "1A"]
+    else:
+        active_classes = ["SL", "3A", "2A", "1A"]
+
+    classes = []
+    seed_val = (abs(hash(f"{train_number}_{distance}"))) % 1000
+
+    for idx, cls in enumerate(active_classes):
+        rate, name = rates[cls]
+        fare = max(120.0, round(distance * rate, 0))
+        cls_seed = (seed_val + idx * 19) % 100
+
+        if cls_seed < 55:
+            seats = (cls_seed % 38) + 4
+            status = "AVAILABLE"
+            display = f"AVAILABLE {seats}"
+            prob = 1.0
+            avail_num = seats
+        elif cls_seed < 75:
+            rac = (cls_seed % 12) + 2
+            status = "RAC"
+            display = f"RAC {rac}"
+            prob = 0.95
+            avail_num = 0
+        else:
+            wl = (cls_seed % 24) + 1
+            status = "WAITLIST"
+            display = f"WL {wl}"
+            prob = max(0.45, round(1.0 - (wl * 0.025), 2))
+            avail_num = -wl
+
+        classes.append(ClassAvailability(
+            travel_class=cls,
+            class_name=name,
+            fare=fare,
+            status=status,
+            available_seats=avail_num,
+            status_display=display,
+            confirmation_probability=prob,
+        ))
+
+    return classes
 
 
 class JourneySearchService:
@@ -130,6 +200,19 @@ class JourneySearchService:
             if jr:
                 journey_responses.append(jr)
 
+        # Sort journeys if specified
+        if request.sort_by == "fastest":
+            journey_responses.sort(key=lambda j: j.total_duration_minutes)
+        elif request.sort_by == "cheapest":
+            journey_responses.sort(key=lambda j: j.total_fare or float('inf'))
+        elif request.sort_by == "safest":
+            journey_responses.sort(
+                key=lambda j: (j.score.reliability_score, j.overall_success_probability or 0),
+                reverse=True,
+            )
+        elif request.sort_by == "fewest_changes":
+            journey_responses.sort(key=lambda j: j.num_connections)
+
         # Find tagged recommendations
         best_overall = next((j for j in journey_responses if "BEST_OVERALL" in j.tags), None)
         fastest = next((j for j in journey_responses if "FASTEST" in j.tags), None)
@@ -157,10 +240,24 @@ class JourneySearchService:
         dep_after_minutes: Optional[int] = None,
     ) -> list[dict]:
         """
-        Find all direct trains between two stations.
-        Similar to the /api/trains/direct endpoint but returns dicts
-        for the scoring pipeline.
+        Find all direct trains between two stations (or their city clusters).
         """
+        source_cluster = STATION_TO_CLUSTER.get(source.code)
+        source_codes = CITY_CLUSTERS[source_cluster] if source_cluster else [source.code]
+
+        dest_cluster = STATION_TO_CLUSTER.get(dest.code)
+        dest_codes = CITY_CLUSTERS[dest_cluster] if dest_cluster else [dest.code]
+
+        # Get station IDs
+        source_stations_res = await self.db.execute(select(Station).where(Station.code.in_(source_codes)))
+        source_stations_map = {s.id: s for s in source_stations_res.scalars().all()}
+
+        dest_stations_res = await self.db.execute(select(Station).where(Station.code.in_(dest_codes)))
+        dest_stations_map = {s.id: s for s in dest_stations_res.scalars().all()}
+
+        if not source_stations_map or not dest_stations_map:
+            return []
+
         FromStop = aliased(TrainStop)
         ToStop = aliased(TrainStop)
 
@@ -170,8 +267,8 @@ class JourneySearchService:
             .join(ToStop, ToStop.train_id == Train.id)
             .where(
                 and_(
-                    FromStop.station_id == source.id,
-                    ToStop.station_id == dest.id,
+                    FromStop.station_id.in_(list(source_stations_map.keys())),
+                    ToStop.station_id.in_(list(dest_stations_map.keys())),
                     FromStop.stop_sequence < ToStop.stop_sequence,
                 )
             )
@@ -216,17 +313,20 @@ class JourneySearchService:
             dist_to = to_stop.distance_from_source or 0
             distance = dist_to - dist_from if dist_to >= dist_from else None
 
-            # Fare (mock)
-            fare = round(distance * 1.15, 0) if distance and distance > 0 else None
+            from_st = source_stations_map.get(from_stop.station_id, source)
+            to_st = dest_stations_map.get(to_stop.station_id, dest)
+
+            availabilities = generate_class_availabilities(distance, train.train_type, train.train_number)
+            fare = availabilities[0].fare if availabilities else (round(distance * 1.15, 0) if distance else None)
 
             segment = {
                 "train_number": train.train_number,
                 "train_name": train.train_name,
                 "train_type": train.train_type,
-                "from_station_code": source.code,
-                "from_station_name": source.name,
-                "to_station_code": dest.code,
-                "to_station_name": dest.name,
+                "from_station_code": from_st.code,
+                "from_station_name": from_st.name,
+                "to_station_code": to_st.code,
+                "to_station_name": to_st.name,
                 "departure_time": from_stop.departure_time.strftime("%H:%M") if from_stop.departure_time else None,
                 "arrival_time": to_stop.arrival_time.strftime("%H:%M") if to_stop.arrival_time else None,
                 "departure_day_offset": from_stop.day_offset,
@@ -234,10 +334,11 @@ class JourneySearchService:
                 "duration_minutes": duration,
                 "distance_km": distance,
                 "fare": fare,
+                "availabilities": availabilities,
             }
 
             journey = {
-                "journey_id": f"J-{source.code}-{dest.code}-{train.train_number}",
+                "journey_id": f"J-{from_st.code}-{to_st.code}-{train.train_number}",
                 "total_duration_minutes": duration,
                 "total_duration_display": _minutes_to_display(duration),
                 "total_layover_minutes": 0,
@@ -245,10 +346,10 @@ class JourneySearchService:
                 "total_fare": fare,
                 "overall_risk": "NONE",
                 "overall_success_probability": 1.0,
-                "from_station": source.code,
-                "from_station_name": source.name,
-                "to_station": dest.code,
-                "to_station_name": dest.name,
+                "from_station": from_st.code,
+                "from_station_name": from_st.name,
+                "to_station": to_st.code,
+                "to_station_name": to_st.name,
                 "date": journey_date.isoformat(),
                 "train_segments": [segment],
                 "layovers": [],
@@ -353,6 +454,15 @@ class JourneySearchService:
             layovers = j.get("layovers", [])
 
             for i, seg in enumerate(train_segs):
+                # Compute class availabilities if not already present
+                availabilities = seg.get("availabilities")
+                if not availabilities:
+                    availabilities = generate_class_availabilities(
+                        seg.get("distance_km"),
+                        seg.get("train_type", "EXPRESS"),
+                        seg.get("train_number", "00000")
+                    )
+
                 # Add train segment
                 segments.append(TrainSegment(
                     train_number=seg["train_number"],
@@ -370,6 +480,7 @@ class JourneySearchService:
                     distance_km=seg.get("distance_km"),
                     fare=seg.get("fare"),
                     predicted_delay_minutes=None,  # ML fills this in Phase 3
+                    availabilities=availabilities,
                 ))
 
                 # Add layover after this segment (if not the last segment)

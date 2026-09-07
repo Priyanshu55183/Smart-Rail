@@ -29,7 +29,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 import heapq
 
-from app.services.graph_builder import RailwayGraph, _time_to_minutes, _minutes_to_display
+from app.services.graph_builder import RailwayGraph, _minutes_to_display, CITY_CLUSTERS, STATION_TO_CLUSTER
 from app.config import get_settings
 
 settings = get_settings()
@@ -37,28 +37,22 @@ settings = get_settings()
 
 @dataclass
 class RawPath:
-    """A raw path found by Dijkstra, before scoring."""
-    # List of (node_id, edge_type) pairs in order
+    """Internal representation of a path found by Dijkstra."""
     nodes: list[str] = field(default_factory=list)
     edges: list[dict] = field(default_factory=list)
-    total_time_minutes: int = 0
-    num_connections: int = 0
     train_segments: list[dict] = field(default_factory=list)
     layovers: list[dict] = field(default_factory=list)
+    total_time_minutes: int = 0
+    num_connections: int = 0
 
 
 class DijkstraRouter:
     """
-    Finds top-K paths from source to destination using
-    a modified Dijkstra algorithm on the railway graph.
-
-    Usage:
-        router = DijkstraRouter(railway_graph)
-        paths = router.find_paths("SBC", "NDLS", max_connections=2, top_k=15)
+    Time-dependent Dijkstra shortest path algorithm on the railway network graph.
     """
 
-    def __init__(self, rg: RailwayGraph):
-        self.rg = rg
+    def __init__(self, railway_graph: RailwayGraph):
+        self.rg = railway_graph
 
     def find_paths(
         self,
@@ -71,30 +65,25 @@ class DijkstraRouter:
         departure_after_minutes: Optional[int] = None,
     ) -> list[RawPath]:
         """
-        Find the top-K paths from source to destination.
-
-        Args:
-            source_code: Source station code (e.g., "SBC")
-            dest_code: Destination station code (e.g., "NDLS")
-            max_connections: Maximum number of train changes
-            min_layover_minutes: Minimum layover at transfer stations
-            max_layover_minutes: Maximum layover at transfer stations
-            top_k: How many paths to find
-            departure_after_minutes: Only consider departures after this time
-                                      (minutes from midnight)
-
-        Returns:
-            List of RawPath objects, sorted by total travel time.
+        Find the top-K shortest time-dependent paths from source to destination.
+        Supports inter-terminal cluster matching (e.g. SBC->BCT finds SBC->CSMT).
         """
         graph = self.rg.graph
         meta = self.rg.node_meta
 
-        # Find all starting nodes (departures from source station)
+        source_cluster = STATION_TO_CLUSTER.get(source_code)
+        source_stations = CITY_CLUSTERS[source_cluster] if source_cluster else [source_code]
+
+        dest_cluster = STATION_TO_CLUSTER.get(dest_code)
+        dest_stations = set(CITY_CLUSTERS[dest_cluster] if dest_cluster else [dest_code])
+
+        # Find all starting nodes (departures from source station and cluster)
         start_nodes = []
-        for dep_minutes, node_id, train_number in self.rg.station_departures.get(source_code, []):
-            if departure_after_minutes is not None and dep_minutes < departure_after_minutes:
-                continue
-            start_nodes.append((dep_minutes, node_id))
+        for s_code in source_stations:
+            for dep_minutes, node_id, train_number in self.rg.station_departures.get(s_code, []):
+                if departure_after_minutes is not None and dep_minutes < departure_after_minutes:
+                    continue
+                start_nodes.append((dep_minutes, node_id))
 
         if not start_nodes:
             return []
@@ -131,8 +120,8 @@ class DijkstraRouter:
             if current_meta is None:
                 continue
 
-            # Check if we've reached the destination
-            if current_meta["station_code"] == dest_code:
+            # Check if we've reached the destination station or its city cluster
+            if current_meta["station_code"] in dest_stations:
                 raw_path = self._build_raw_path(path_nodes, path_edges)
                 if raw_path is not None:
                     found_paths.append(raw_path)

@@ -47,30 +47,21 @@ async def seed_all() -> None:
     (stations first, then trains depend on station IDs).
     """
     async with async_session_factory() as session:
-        # Check if already seeded
-        count = await session.execute(select(func.count()).select_from(Station))
-        station_count = count.scalar()
-        if station_count and station_count > 0:
-            print(f"✅ Database already seeded ({station_count} stations found). Skipping.")
-            return
-
-        print("🌱 Starting database seed...")
-
-        # Step 1: Stations
+        # Step 1: Check / seed stations
         station_map = await seed_stations(session)
-        print(f"   ✅ {len(station_map)} stations loaded")
+        print(f"   ✅ {len(station_map)} stations verified")
 
-        # Step 2: Trains + Stops
+        # Step 2: Trains + Stops (idempotent — adds any missing trains)
         train_map = await seed_trains_and_stops(session, station_map)
-        print(f"   ✅ {len(train_map)} trains loaded with schedules")
+        print(f"   ✅ {len(train_map)} trains verified with schedules")
 
         # Step 3: Train Runs (90 days)
         run_count = await seed_train_runs(session, train_map)
-        print(f"   ✅ {run_count} train run records created")
+        print(f"   ✅ {run_count} train run records verified")
 
         # Step 4: Historical Delays
         delay_count = await seed_historical_delays(session, train_map, station_map)
-        print(f"   ✅ {delay_count} historical delay records created")
+        print(f"   ✅ {delay_count} historical delay records verified")
 
         await session.commit()
         print("🎉 Database seed complete!")
@@ -82,9 +73,14 @@ async def seed_stations(session: AsyncSession) -> dict[str, int]:
     Returns: {station_code: station_id}
     """
     station_map: dict[str, int] = {}
+    existing = await session.execute(select(Station))
+    for s in existing.scalars().all():
+        station_map[s.code] = s.id
 
     for data in STATIONS_DATA:
         code, name, city, state, zone, category, lat, lon, is_junction, min_transfer, platforms = data
+        if code in station_map:
+            continue
 
         station = Station(
             code=code,
@@ -114,9 +110,14 @@ async def seed_trains_and_stops(
     Returns: {train_number: train_id}
     """
     train_map: dict[str, int] = {}
+    existing_trains = await session.execute(select(Train))
+    for t in existing_trains.scalars().all():
+        train_map[t.train_number] = t.id
 
     for train_data in TRAINS_DATA:
         number = train_data["number"]
+        if number in train_map:
+            continue
         name = train_data["name"]
         train_type = train_data["type"]
         runs_on = train_data["runs_on"]
@@ -203,6 +204,9 @@ async def seed_train_runs(
     today = date.today()
     count = 0
 
+    existing_runs_res = await session.execute(select(TrainRun.train_id, TrainRun.journey_date))
+    existing_runs = set(existing_runs_res.all())
+
     for number, train_id in train_map.items():
         # Get the train to check which days it runs
         result = await session.execute(
@@ -212,6 +216,9 @@ async def seed_train_runs(
 
         for day_offset in range(settings.SEED_DAYS_OF_RUNS):
             run_date = today + timedelta(days=day_offset)
+            if (train_id, run_date) in existing_runs:
+                continue
+
             day_name = run_date.strftime("%a")
 
             if not train.runs_on(day_name):
@@ -226,6 +233,7 @@ async def seed_train_runs(
                 status=status,
             )
             session.add(run)
+            existing_runs.add((train_id, run_date))
             count += 1
 
     return count
@@ -237,14 +245,13 @@ async def seed_historical_delays(
     station_map: dict[str, int],
 ) -> int:
     """
-    Generate ~50,000 realistic historical delay records.
-
-    Delay patterns (based on real Indian Railways trends):
-      - Train type: Rajdhani ~8min, Express ~25min, Passenger ~40min
-      - Season: Fog in winter (NR), monsoon in Jul-Sep (WR/CR)
-      - Time: Late-night trains accumulate more delay
-      - Station: Busy junctions have more congestion delays
+    Generate ~50,000 realistic historical delay records if not already seeded.
+    Delay patterns: Rajdhani ~8min, Express ~25min, Passenger ~40min.
     """
+    delay_count_res = await session.execute(select(func.count()).select_from(HistoricalDelay))
+    existing_delays = delay_count_res.scalar() or 0
+    if existing_delays >= 1000:
+        return existing_delays
     # Load station zones for seasonal patterns
     station_zones: dict[int, str] = {}
     result = await session.execute(select(Station))

@@ -42,6 +42,7 @@ from app.schemas.journey import (
     ClassAvailability,
 )
 from app.config import get_settings
+from app.ml.predictor import get_delay_predictor
 
 settings = get_settings()
 
@@ -120,6 +121,7 @@ class JourneySearchService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.scorer = JourneyScorer()
+        self.delay_predictor = get_delay_predictor()
 
     async def search(self, request: JourneySearchRequest) -> JourneySearchResponse:
         """
@@ -319,6 +321,15 @@ class JourneySearchService:
             availabilities = generate_class_availabilities(distance, train.train_type, train.train_number)
             fare = availabilities[0].fare if availabilities else (round(distance * 1.15, 0) if distance else None)
 
+            pred_delay = self.delay_predictor.predict_delay(
+                train_type=train.train_type,
+                railway_zone=to_st.zone if to_st and to_st.zone else "NR",
+                month=journey_date.month,
+                day_of_week=journey_date.weekday(),
+                scheduled_hour=to_stop.arrival_time.hour if to_stop.arrival_time else 12,
+                distance_km=distance,
+            )
+
             segment = {
                 "train_number": train.train_number,
                 "train_name": train.train_name,
@@ -334,6 +345,7 @@ class JourneySearchService:
                 "duration_minutes": duration,
                 "distance_km": distance,
                 "fare": fare,
+                "predicted_delay_minutes": pred_delay,
                 "availabilities": availabilities,
             }
 
@@ -463,6 +475,15 @@ class JourneySearchService:
                         seg.get("train_number", "00000")
                     )
 
+                # Predict delay using ML model
+                pred_delay = seg.get("predicted_delay_minutes")
+                if pred_delay is None:
+                    try:
+                        journey_d = date.fromisoformat(j.get("date")) if j.get("date") else date.today()
+                    except Exception:
+                        journey_d = date.today()
+                    pred_delay = self.delay_predictor.predict_delay_for_segment(seg, journey_d)
+
                 # Add train segment
                 segments.append(TrainSegment(
                     train_number=seg["train_number"],
@@ -479,7 +500,7 @@ class JourneySearchService:
                     duration_minutes=seg.get("duration_minutes", 0),
                     distance_km=seg.get("distance_km"),
                     fare=seg.get("fare"),
-                    predicted_delay_minutes=None,  # ML fills this in Phase 3
+                    predicted_delay_minutes=pred_delay,
                     availabilities=availabilities,
                 ))
 

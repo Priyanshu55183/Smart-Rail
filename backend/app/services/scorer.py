@@ -185,11 +185,21 @@ class JourneyScorer:
         if not segments:
             return 75.0
 
-        # Average reliability across all train segments
+        # Average reliability across all train segments, incorporating ML delay predictions
         seg_scores = []
         for seg in segments:
             train_type = seg.get("train_type", "EXPRESS")
-            seg_scores.append(type_scores.get(train_type, 72))
+            base_score = type_scores.get(train_type, 72)
+
+            # ML Delay Penalty: every 10 min predicted delay reduces segment reliability by 4 points
+            pred_delay = seg.get("predicted_delay_minutes")
+            if pred_delay is not None and pred_delay > 0:
+                delay_penalty = (pred_delay / 10.0) * 4.0
+                seg_score = max(20.0, base_score - delay_penalty)
+            else:
+                seg_score = base_score
+
+            seg_scores.append(seg_score)
 
         # Penalty for connections (each connection adds failure risk)
         num_conn = journey.get("num_connections", 0)

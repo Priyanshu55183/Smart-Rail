@@ -88,6 +88,11 @@ class Settings(BaseSettings):
     OLLAMA_MODEL: str = "llama3.1"  # Model to use for explanations
     LLM_ENABLED: bool = False  # Disabled by default, enable in Phase 2
 
+    # ── Authentication (JWT) ────────────────────────────────
+    JWT_SECRET_KEY: str = "smartrail-super-secret-key-change-in-production-2026"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours
+
     # ── Seed Data ─────────────────────────────────────────
     SEED_STATION_COUNT: int = 120
     SEED_TRAIN_COUNT: int = 75

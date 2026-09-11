@@ -6,7 +6,7 @@ knows about every table. Without this, Base.metadata.create_all()
 would miss tables whose modules weren't imported.
 
 Usage anywhere in the app:
-    from app.models import Station, Train, TrainStop, TrainRun
+    from app.models import Station, Train, TrainStop, TrainRun, User
 """
 
 from app.models.station import Station
@@ -15,6 +15,7 @@ from app.models.train_stop import TrainStop
 from app.models.train_run import TrainRun, TrainRunStatus
 from app.models.availability import Availability
 from app.models.delay import HistoricalDelay
+from app.models.user import User
 
 __all__ = [
     "Station",
@@ -24,4 +25,6 @@ __all__ = [
     "TrainRunStatus",
     "Availability",
     "HistoricalDelay",
+    "User",
 ]
+

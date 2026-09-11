@@ -1,21 +1,27 @@
-import './globals.css';
+'use client';
 
-export const metadata = {
-  title: 'SmartRail — Intelligent Railway Journey Planner',
-  description:
-    'AI-powered multi-train journey planner for Indian Railways. Uses graph algorithms, ML delay prediction, and smart scoring to find the best routes.',
-  keywords: 'Indian Railways, train booking, journey planner, smart rail, AI travel',
-};
+import './globals.css';
+import { AuthProvider, useAuth } from './lib/AuthContext';
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
+      <head>
+        <title>SmartRail — Intelligent Railway Journey Planner</title>
+        <meta
+          name="description"
+          content="AI-powered multi-train journey planner for Indian Railways. Uses graph algorithms, ML delay prediction, and smart scoring to find the best routes."
+        />
+        <meta name="keywords" content="Indian Railways, train booking, journey planner, smart rail, AI travel" />
+      </head>
       <body>
-        <Navbar />
-        <main style={{ minHeight: 'calc(100vh - 140px)', position: 'relative', zIndex: 1 }}>
-          {children}
-        </main>
-        <Footer />
+        <AuthProvider>
+          <Navbar />
+          <main style={{ minHeight: 'calc(100vh - 140px)', position: 'relative', zIndex: 1 }}>
+            {children}
+          </main>
+          <Footer />
+        </AuthProvider>
       </body>
     </html>
   );
@@ -23,6 +29,8 @@ export default function RootLayout({ children }) {
 
 /* ── Navbar ─────────────────────────────────── */
 function Navbar() {
+  const { user, isAuthenticated, logout, loading } = useAuth();
+
   return (
     <nav style={{
       position: 'sticky',
@@ -70,6 +78,81 @@ function Navbar() {
           >
             API Health
           </a>
+
+          {/* Auth buttons */}
+          {!loading && (
+            <>
+              {isAuthenticated ? (
+                /* ── Logged-in state ── */
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '8px' }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '6px 14px',
+                    background: 'rgba(59, 130, 246, 0.1)',
+                    border: '1px solid rgba(59, 130, 246, 0.2)',
+                    borderRadius: 'var(--radius-full)',
+                  }}>
+                    <div style={{
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: '50%',
+                      background: 'linear-gradient(135deg, var(--accent-blue), var(--accent-cyan))',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      color: 'white',
+                    }}>
+                      {user?.name?.charAt(0)?.toUpperCase() || '?'}
+                    </div>
+                    <span style={{
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      color: 'var(--text-primary)',
+                      maxWidth: '120px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}>
+                      {user?.name}
+                    </span>
+                  </div>
+                  <button
+                    onClick={logout}
+                    className="btn btn-ghost"
+                    style={{
+                      fontSize: '13px',
+                      color: 'var(--danger-light)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Logout
+                  </button>
+                </div>
+              ) : (
+                /* ── Logged-out state ── */
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: '8px' }}>
+                  <a href="/login" className="btn btn-ghost" style={{ fontSize: '13px' }}>
+                    Sign In
+                  </a>
+                  <a
+                    href="/register"
+                    className="btn btn-primary"
+                    style={{
+                      fontSize: '13px',
+                      padding: '8px 18px',
+                      borderRadius: 'var(--radius-full)',
+                    }}
+                  >
+                    Sign Up
+                  </a>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     </nav>
@@ -103,3 +186,4 @@ function Footer() {
     </footer>
   );
 }
+

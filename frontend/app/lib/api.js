@@ -115,3 +115,17 @@ export async function getTrainSchedule(trainNumber) {
 export async function getHealth() {
   return apiFetch('/health');
 }
+
+/**
+ * Discover Split-Ticket / Confirmed Berth alternatives.
+ * GET /api/split-tickets/find?from=SBC&to=NDLS&date=2026-09-10&class=3A
+ */
+export async function fetchSplitTickets({ from, to, date, travelClass = '3A' }) {
+  const params = new URLSearchParams({
+    from,
+    to,
+    date,
+    class: travelClass,
+  });
+  return apiFetch(`/split-tickets/find?${params}`);
+}

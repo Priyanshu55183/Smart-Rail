@@ -323,9 +323,10 @@ function TrainSegmentBlock({ seg }) {
                   <div style={{ fontWeight: 700, color, marginTop: '2px', fontSize: '11px' }}>
                     {avail.status_display}
                   </div>
-                  {avail.status === 'WAITLIST' && avail.confirmation_probability != null && (
-                    <div style={{ fontSize: '9px', color: 'var(--text-tertiary)', marginTop: '1px' }}>
-                      ~{Math.round(avail.confirmation_probability * 100)}% confirm chance
+                  {avail.status === 'WAITLIST' && (
+                    <div style={{ fontSize: '9px', color: 'var(--accent-cyan)', marginTop: '2px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>~{Math.round((avail.confirmation_probability || 0.4) * 100)}% chance</span>
+                      <span title="Split-ticket can bypass this waitlist" style={{ cursor: 'help' }}>⚡ Split Opt</span>
                     </div>
                   )}
                 </div>

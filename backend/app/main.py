@@ -112,12 +112,14 @@ from app.api.stations import router as stations_router
 from app.api.trains import router as trains_router
 from app.api.journeys import router as journeys_router
 from app.api.auth import router as auth_router
+from app.api.split_tickets import router as split_tickets_router
 
 app.include_router(health_router, prefix="/api", tags=["Health"])
 app.include_router(stations_router, prefix="/api/stations", tags=["Stations"])
 app.include_router(trains_router, prefix="/api/trains", tags=["Trains"])
 app.include_router(journeys_router, prefix="/api/journeys", tags=["Journeys"])
 app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
+app.include_router(split_tickets_router, prefix="/api/split-tickets", tags=["Split Tickets"])
 
 
 # ── Root Endpoint ─────────────────────────────────────────

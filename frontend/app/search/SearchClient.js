@@ -5,12 +5,14 @@ import { useSearchParams } from 'next/navigation';
 import SearchForm from '../components/SearchForm';
 import JourneyCard from '../components/JourneyCard';
 import RecommendationCards from '../components/RecommendationCards';
+import SplitTicketCard from '../components/SplitTicketCard';
 import { LoadingState, ErrorState, EmptyState } from '../components/States';
-import { searchJourneys } from '../lib/api';
+import { searchJourneys, fetchSplitTickets } from '../lib/api';
 
 function SearchContent() {
   const searchParams = useSearchParams();
   const [results, setResults] = useState(null);
+  const [splitData, setSplitData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [sortBy, setSortBy] = useState('best');
@@ -26,16 +28,33 @@ function SearchContent() {
     setLoading(true);
     setError(null);
     setResults(null);
+    setSplitData(null);
 
     try {
-      const data = await searchJourneys({
-        from,
-        to,
-        date,
-        maxConnections: parseInt(maxConn),
-        sortBy,
-      });
+      // Parallel fetch: journey search + split-ticket hacker fare analysis
+      const [data, splitRes] = await Promise.all([
+        searchJourneys({
+          from,
+          to,
+          date,
+          maxConnections: parseInt(maxConn),
+          sortBy,
+        }),
+        fetchSplitTickets({
+          from,
+          to,
+          date,
+          travelClass: '3A',
+        }).catch((e) => {
+          console.warn('Split ticket check skipped:', e);
+          return null;
+        }),
+      ]);
+
       setResults(data);
+      if (splitRes && splitRes.options_count > 0) {
+        setSplitData(splitRes);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -112,6 +131,11 @@ function SearchContent() {
                 ))}
               </div>
             </div>
+
+            {/* Split-Ticket / Hacker Fare Discovery */}
+            {splitData && (
+              <SplitTicketCard data={splitData} travelClass="3A" />
+            )}
 
             {/* Recommendation Cards */}
             {results.journeys?.length > 0 && (

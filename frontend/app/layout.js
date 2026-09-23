@@ -69,6 +69,7 @@ function Navbar() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <a href="/" className="btn btn-ghost" style={{ fontSize: '13px' }}>Home</a>
           <a href="/search" className="btn btn-ghost" style={{ fontSize: '13px' }}>Search</a>
+          <a href="/pnr" className="btn btn-ghost" style={{ fontSize: '13px' }}>🎫 PNR Status</a>
           <a
             href="/api/health"
             target="_blank"

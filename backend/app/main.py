@@ -51,8 +51,12 @@ async def lifespan(app: FastAPI):
     await init_db()
     print("✅ PostgreSQL connected & tables created")
 
-    # 1b. Seed data (idempotent — skips if already seeded)
-    await seed_all()
+    # 1b. Seed data (only when SEED_ON_STARTUP=true in .env)
+    if settings.SEED_ON_STARTUP:
+        print("🌱 Seeding database (SEED_ON_STARTUP=true)...")
+        await seed_all()
+    else:
+        print("⏭️  Skipping seed (set SEED_ON_STARTUP=true in .env to seed)")
 
     # 2. Redis
     print("🔴 Connecting to Redis...")

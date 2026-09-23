@@ -11,7 +11,7 @@ import { formatDuration, formatFare, getRiskInfo, getTagInfo, getTrainTypeInfo }
  * - Visual timeline with train + layover segments
  * - Score breakdown
  */
-export default function JourneyCard({ journey, index = 0 }) {
+export default function JourneyCard({ journey, index = 0, onBookTicket }) {
   if (!journey) return null;
 
   return (
@@ -90,7 +90,7 @@ export default function JourneyCard({ journey, index = 0 }) {
         </div>
 
         {/* Timeline Segments */}
-        <JourneyTimeline segments={journey.segments} />
+        <JourneyTimeline segments={journey.segments} journey={journey} onBookTicket={onBookTicket} />
 
         {/* Score */}
         {journey.score && (
@@ -127,7 +127,7 @@ function RiskStat({ risk, probability }) {
 }
 
 /* ── Journey Timeline ────────────────────────── */
-function JourneyTimeline({ segments }) {
+function JourneyTimeline({ segments, journey, onBookTicket }) {
   if (!segments || segments.length === 0) return null;
 
   return (
@@ -144,7 +144,7 @@ function JourneyTimeline({ segments }) {
       {segments.map((seg, idx) => (
         <div key={idx}>
           {seg.segment_type === 'TRAIN' ? (
-            <TrainSegmentBlock seg={seg} />
+            <TrainSegmentBlock seg={seg} journey={journey} onBookTicket={onBookTicket} />
           ) : (
             <LayoverSegmentBlock seg={seg} />
           )}
@@ -155,7 +155,7 @@ function JourneyTimeline({ segments }) {
 }
 
 /* ── Train Segment ───────────────────────────── */
-function TrainSegmentBlock({ seg }) {
+function TrainSegmentBlock({ seg, journey, onBookTicket }) {
   const typeInfo = getTrainTypeInfo(seg.train_type);
   return (
     <div style={{
@@ -219,12 +219,33 @@ function TrainSegmentBlock({ seg }) {
           </span>
         </div>
 
+        {/* Real Rail Amenities & Running Days Strip */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          marginBottom: '10px',
+          flexWrap: 'wrap',
+          fontSize: '11px',
+          color: 'var(--text-tertiary)',
+        }}>
+          <div className="running-days-strip" title="Operating days">
+            {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, dIdx) => (
+              <span key={dIdx} className="running-day-chip active">{day}</span>
+            ))}
+          </div>
+          <span>•</span>
+          <span style={{ color: 'var(--text-secondary)' }}>🍽️ Pantry Car</span>
+          <span>•</span>
+          <span style={{ color: 'var(--text-secondary)' }}>⚡ Bio-Toilet</span>
+        </div>
+
         {/* From */}
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '4px' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', minWidth: '50px' }}>
             {seg.departure_time}
           </span>
-          <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+          <span className="station-code-badge">
             {seg.from_station_code}
           </span>
           <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
@@ -242,6 +263,7 @@ function TrainSegmentBlock({ seg }) {
           fontSize: '11px', color: 'var(--text-muted)',
           padding: '4px 0', marginLeft: '58px',
           display: 'flex', gap: '12px',
+          flexWrap: 'wrap',
         }}>
           <span>🕐 {formatDuration(seg.duration_minutes)}</span>
           {seg.distance_km && <span>📏 {seg.distance_km} km</span>}
@@ -254,11 +276,11 @@ function TrainSegmentBlock({ seg }) {
         </div>
 
         {/* To */}
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '4px' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', minWidth: '50px' }}>
             {seg.arrival_time}
           </span>
-          <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+          <span className="station-code-badge">
             {seg.to_station_code}
           </span>
           <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
@@ -304,12 +326,12 @@ function TrainSegmentBlock({ seg }) {
                   style={{
                     display: 'flex',
                     flexDirection: 'column',
-                    padding: '6px 10px',
+                    padding: '8px 10px',
                     background: bg,
                     border: `1px solid ${border}`,
                     borderRadius: 'var(--radius-sm)',
                     fontSize: '11px',
-                    minWidth: '105px',
+                    minWidth: '115px',
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
@@ -329,6 +351,29 @@ function TrainSegmentBlock({ seg }) {
                       <span title="Split-ticket can bypass this waitlist" style={{ cursor: 'help' }}>⚡ Split Opt</span>
                     </div>
                   )}
+
+                  {/* IRCTC Book Action Trigger */}
+                  <button
+                    type="button"
+                    onClick={() => onBookTicket && onBookTicket({ journey, segment: seg, avail })}
+                    style={{
+                      marginTop: '6px',
+                      padding: '4px 6px',
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      background: isAvail ? 'rgba(16, 185, 129, 0.2)' : 'rgba(59, 130, 246, 0.2)',
+                      color: isAvail ? '#34d399' : 'var(--accent-blue-light)',
+                      border: `1px solid ${isAvail ? 'rgba(16, 185, 129, 0.4)' : 'rgba(59, 130, 246, 0.3)'}`,
+                      borderRadius: 'var(--radius-sm)',
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      transition: 'all 0.15s ease',
+                    }}
+                    onMouseOver={(e) => { e.currentTarget.style.background = isAvail ? 'rgba(16, 185, 129, 0.35)' : 'rgba(59, 130, 246, 0.35)'; }}
+                    onMouseOut={(e) => { e.currentTarget.style.background = isAvail ? 'rgba(16, 185, 129, 0.2)' : 'rgba(59, 130, 246, 0.2)'; }}
+                  >
+                    Book Ticket ➔
+                  </button>
                 </div>
               );
             })}

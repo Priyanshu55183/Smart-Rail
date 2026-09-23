@@ -373,3 +373,126 @@ a:hover {
     font-size: 14px;
   }
 }
+
+/* ── IRCTC Authentic Rail Components ────────── */
+.station-code-badge {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--accent-blue-light);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  display: inline-flex;
+  align-items: center;
+}
+
+.running-days-strip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+}
+.running-day-chip {
+  width: 17px;
+  height: 17px;
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.running-day-chip.active {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+.running-day-chip.inactive {
+  background: rgba(148, 163, 184, 0.05);
+  color: var(--text-muted);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  text-decoration: line-through;
+}
+
+/* 7-Day Date Carousel */
+.date-strip-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 6px 2px 12px 2px;
+  scrollbar-width: thin;
+}
+.date-strip-card {
+  min-width: 100px;
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.date-strip-card:hover {
+  border-color: var(--accent-blue);
+  transform: translateY(-2px);
+  background: var(--bg-glass-hover);
+}
+.date-strip-card.selected {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.25), rgba(34, 211, 238, 0.15));
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 16px rgba(34, 211, 238, 0.25);
+}
+
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: rgba(5, 8, 15, 0.85);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow-y: auto;
+}
+.modal-dialog {
+  width: 100%;
+  max-width: 680px;
+  background: #0f172a;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+  overflow: hidden;
+  animation: fadeInUp 0.3s ease-out;
+}
+
+/* E-Ticket Printed Boarding Pass Styles */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .printable-eticket, .printable-eticket * {
+    visibility: visible;
+  }
+  .printable-eticket {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    color: #000 !important;
+    background: #fff !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+}

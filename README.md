@@ -48,7 +48,7 @@ SmartRail is an intelligent train journey planner built for Indian Railways (IRC
 |---|---|
 | **Frontend** | [Next.js](https://nextjs.org/) (App Router), Vanilla CSS, React 19, Lucide Icons |
 | **Backend API** | [FastAPI](https://fastapi.tiangolo.com/), Python 3.12+, Pydantic v2 |
-| **Database** | [PostgreSQL 16](https://www.postgresql.org/) with [SQLAlchemy 2.0](https://www.sqlalchemy.org/) (AsyncIO + `asyncpg`) |
+| **Database** | [PostgreSQL 16](https://www.postgresql.org/) / [Supabase](https://supabase.com/) (AsyncIO + `asyncpg`, see [Supabase Setup Guide](docs/SUPABASE_SETUP.md)) |
 | **Caching** | [Redis 7](https://redis.io/) (`redis-py` with `hiredis`) |
 | **Graph & Algorithms** | [NetworkX](https://networkx.org/), Custom Time-Dependent Multi-Criteria Dijkstra |
 | **ML & Analytics** | [scikit-learn](https://scikit-learn.org/), [XGBoost](https://xgboost.readthedocs.io/), [PyTorch](https://pytorch.org/) (delay modeling) |
@@ -116,7 +116,7 @@ Make sure you have [Docker Desktop](https://www.docker.com/products/docker-deskt
 #### 1. Prerequisites
 - Python 3.11+
 - Node.js 18+ and npm
-- PostgreSQL running locally (default: `localhost:5432`, user: `smartrail`, db: `smartrail`)
+- PostgreSQL 16 running locally OR a cloud [Supabase](https://supabase.com/) project (see [Supabase Setup Guide](docs/SUPABASE_SETUP.md))
 - Redis running locally (default: `localhost:6379`)
 
 #### 2. Backend Setup

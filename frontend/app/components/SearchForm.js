@@ -21,6 +21,7 @@ export default function SearchForm({ compact = false }) {
   const [toStation, setToStation] = useState(null);
   const [date, setDate] = useState(getDefaultDate());
   const [maxConnections, setMaxConnections] = useState(2);
+  const [quota, setQuota] = useState('GN');
   const [error, setError] = useState('');
 
   const handleSwap = () => {
@@ -43,6 +44,7 @@ export default function SearchForm({ compact = false }) {
       to: toStation.code,
       date,
       max_connections: String(maxConnections),
+      quota,
     });
 
     router.push(`/search?${params.toString()}`);
@@ -167,6 +169,35 @@ export default function SearchForm({ compact = false }) {
               <option value={1}>1 Change</option>
               <option value={2}>2 Changes</option>
               <option value={3}>3 Changes</option>
+            </select>
+          </div>
+
+          <div style={{ minWidth: '140px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '12px',
+              fontWeight: 600,
+              color: 'var(--text-secondary)',
+              marginBottom: '6px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+            }}>
+              🎟️ Quota
+            </label>
+            <select
+              className="input input-lg"
+              value={quota}
+              onChange={(e) => setQuota(e.target.value)}
+              id="search-quota"
+              style={{
+                colorScheme: 'dark',
+                cursor: 'pointer',
+              }}
+            >
+              <option value="GN">General (GN)</option>
+              <option value="TQ">Tatkal (TQ)</option>
+              <option value="LD">Ladies (LD)</option>
+              <option value="SS">Senior Citizen (SS)</option>
             </select>
           </div>
 

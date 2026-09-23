@@ -1,15 +1,19 @@
 'use client';
 
 import { useState, useEffect, useCallback, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import SearchForm from '../components/SearchForm';
 import JourneyCard from '../components/JourneyCard';
 import RecommendationCards from '../components/RecommendationCards';
 import SplitTicketCard from '../components/SplitTicketCard';
+import DateStrip from '../components/DateStrip';
+import BookingModal from '../components/BookingModal';
+import ETicketModal from '../components/ETicketModal';
 import { LoadingState, ErrorState, EmptyState } from '../components/States';
 import { searchJourneys, fetchSplitTickets } from '../lib/api';
 
 function SearchContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [results, setResults] = useState(null);
   const [splitData, setSplitData] = useState(null);
@@ -17,10 +21,52 @@ function SearchContent() {
   const [error, setError] = useState(null);
   const [sortBy, setSortBy] = useState('best');
 
+  // Booking Modal & E-Ticket State
+  const [bookingState, setBookingState] = useState({
+    isOpen: false,
+    journey: null,
+    segment: null,
+    avail: null,
+  });
+  const [eTicketState, setETicketState] = useState({
+    isOpen: false,
+    ticket: null,
+  });
+
   const from = searchParams.get('from');
   const to = searchParams.get('to');
   const date = searchParams.get('date');
   const maxConn = searchParams.get('max_connections') || '2';
+  const quota = searchParams.get('quota') || 'GN';
+
+  const handleSelectDate = (newDate) => {
+    if (!from || !to) return;
+    const params = new URLSearchParams({
+      from,
+      to,
+      date: newDate,
+      max_connections: String(maxConn),
+      quota,
+    });
+    router.push(`/search?${params.toString()}`);
+  };
+
+  const handleOpenBooking = ({ journey, segment, avail }) => {
+    setBookingState({
+      isOpen: true,
+      journey,
+      segment,
+      avail,
+    });
+  };
+
+  const handleBookSuccess = (ticket) => {
+    setBookingState((prev) => ({ ...prev, isOpen: false }));
+    setETicketState({
+      isOpen: true,
+      ticket,
+    });
+  };
 
   const doSearch = useCallback(async () => {
     if (!from || !to || !date) return;
@@ -72,9 +118,14 @@ function SearchContent() {
     <div style={{ padding: '32px 0' }}>
       <div className="container">
         {/* Compact Search Form at Top */}
-        <div className="glass-card" style={{ padding: '20px', marginBottom: '28px' }}>
+        <div className="glass-card" style={{ padding: '20px', marginBottom: '20px' }}>
           <SearchForm compact />
         </div>
+
+        {/* 7-Day Date Ribbon Carousel */}
+        {hasParams && (
+          <DateStrip currentDate={date} onSelectDate={handleSelectDate} />
+        )}
 
         {/* No params yet */}
         {!hasParams && (
@@ -108,10 +159,15 @@ function SearchContent() {
               gap: '12px',
             }}>
               <div>
-                <h1 style={{ fontSize: '22px', fontWeight: 800, marginBottom: '4px' }}>
-                  {from} → {to}
-                </h1>
-                <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h1 style={{ fontSize: '22px', fontWeight: 800, margin: 0 }}>
+                    {from} → {to}
+                  </h1>
+                  <span className="station-code-badge" style={{ fontSize: '11px' }}>
+                    Quota: {quota}
+                  </span>
+                </div>
+                <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginTop: '4px' }}>
                   {date} • {results.direct_trains_count} direct, {results.connecting_journeys_count} connecting •{' '}
                   {results.journeys?.length || 0} total results
                 </p>
@@ -153,13 +209,39 @@ function SearchContent() {
             {results.journeys?.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {results.journeys.map((journey, idx) => (
-                  <JourneyCard key={journey.journey_id} journey={journey} index={idx} />
+                  <JourneyCard
+                    key={journey.journey_id}
+                    journey={journey}
+                    index={idx}
+                    onBookTicket={handleOpenBooking}
+                  />
                 ))}
               </div>
             ) : (
               <EmptyState from={from} to={to} />
             )}
           </>
+        )}
+
+        {/* Passenger Booking Drawer Modal */}
+        {bookingState.isOpen && (
+          <BookingModal
+            isOpen={bookingState.isOpen}
+            onClose={() => setBookingState((prev) => ({ ...prev, isOpen: false }))}
+            journey={bookingState.journey}
+            segment={bookingState.segment}
+            avail={bookingState.avail}
+            quota={quota}
+            onBookSuccess={handleBookSuccess}
+          />
+        )}
+
+        {/* Printable Electronic Reservation Slip (ERS) Modal */}
+        {eTicketState.isOpen && (
+          <ETicketModal
+            ticket={eTicketState.ticket}
+            onClose={() => setETicketState({ isOpen: false, ticket: null })}
+          />
         )}
       </div>
     </div>

@@ -23,13 +23,17 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
 
-    # ── Database (PostgreSQL) ─────────────────────────────
-    # asyncpg connection string for SQLAlchemy async engine
+    # ── Database (PostgreSQL / Supabase) ───────────────────
+    # Connection string for SQLAlchemy async engine (supports local Postgres and remote Supabase)
     DATABASE_URL: str = "postgresql+asyncpg://smartrail:smartrail_secret_2026@localhost:5432/smartrail"
-    # sync connection string for Alembic migrations (alembic can't use async)
-    DATABASE_URL_SYNC: str = "postgresql://smartrail:smartrail_secret_2026@localhost:5432/smartrail"
+    # Sync connection string for Alembic / scripts (optional, auto-derived from DATABASE_URL if omitted)
+    DATABASE_URL_SYNC: Optional[str] = None
     DB_POOL_SIZE: int = 20
     DB_MAX_OVERFLOW: int = 10
+    # SSL requirement: None (auto-detect based on host: remote/Supabase = True, local = False), True, or False
+    DB_SSL_REQUIRE: Optional[bool] = None
+    # Statement cache size: None (auto-detected: 0 for Supabase transaction pooler port 6543, default for others)
+    DB_STATEMENT_CACHE_SIZE: Optional[int] = None
 
     # ── Redis ─────────────────────────────────────────────
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -94,6 +98,7 @@ class Settings(BaseSettings):
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours
 
     # ── Seed Data ─────────────────────────────────────────
+    SEED_ON_STARTUP: bool = False  # Set True to seed DB on server start
     SEED_STATION_COUNT: int = 120
     SEED_TRAIN_COUNT: int = 75
     SEED_DELAY_RECORDS: int = 50000

@@ -61,6 +61,7 @@ STATIONS_DATA = [
     ("ALD", "Prayagraj Junction", "Prayagraj", "Uttar Pradesh", "NCR", "A", 25.4335, 81.8462, True, 35, 10),
     ("BSB", "Varanasi Junction", "Varanasi", "Uttar Pradesh", "NR", "A", 25.3150, 83.0168, True, 35, 9),
     ("ADI", "Ahmedabad Junction", "Ahmedabad", "Gujarat", "WR", "A", 23.0270, 72.6003, True, 35, 12),
+    ("ABR", "Abu Road", "Abu Road", "Rajasthan", "NWR", "B", 24.4826, 72.7844, True, 20, 3),
     
     # ── B Category — Important Junctions ──────────────────
     ("AGC", "Agra Cantt", "Agra", "Uttar Pradesh", "NCR", "B", 27.1539, 78.0099, True, 30, 7),

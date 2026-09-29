@@ -62,7 +62,18 @@ async def find_split_tickets(
     except Exception as e:
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Split-ticket calculation error: {str(e)}")
+        return SplitTicketResponse(
+            from_station=from_code,
+            from_station_name=from_code,
+            to_station=to_code,
+            to_station_name=to_code,
+            date=date_str,
+            travel_class=travel_class,
+            direct_status_summary="No split ticket alternatives found",
+            options_count=0,
+            best_option=None,
+            options=[],
+        )
 
     # Cache results for 30 minutes
     await cache_set(cache_key, response.model_dump(), ttl=settings.JOURNEY_CACHE_TTL)

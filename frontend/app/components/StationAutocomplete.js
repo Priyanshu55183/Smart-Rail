@@ -13,6 +13,15 @@ import { debounce } from '@/app/lib/utils';
  * - Shows station code, name, city
  * - Junction badge for major stations
  */
+const POPULAR_STATIONS = [
+  { code: 'NDLS', name: 'New Delhi', city: 'New Delhi', state: 'Delhi', is_junction: true },
+  { code: 'SBC', name: 'KSR Bengaluru City Junction', city: 'Bengaluru', state: 'Karnataka', is_junction: true },
+  { code: 'CSMT', name: 'Chhatrapati Shivaji Terminus', city: 'Mumbai', state: 'Maharashtra', is_junction: true },
+  { code: 'HWH', name: 'Howrah Junction', city: 'Kolkata', state: 'West Bengal', is_junction: true },
+  { code: 'MAS', name: 'Chennai Central', city: 'Chennai', state: 'Tamil Nadu', is_junction: true },
+  { code: 'SC', name: 'Secunderabad Junction', city: 'Hyderabad', state: 'Telangana', is_junction: true },
+];
+
 export default function StationAutocomplete({
   label,
   placeholder = 'Search station...',
@@ -28,39 +37,90 @@ export default function StationAutocomplete({
   const [activeIndex, setActiveIndex] = useState(-1);
   const inputRef = useRef(null);
   const dropdownRef = useRef(null);
+  const cacheRef = useRef(new Map());
+  const latestQueryRef = useRef('');
 
   // Display the selected station
   const displayValue = value ? `${value.code} — ${value.name}` : query;
 
-  // Debounced search
+  // Debounced search (100ms for instant response)
   const debouncedSearch = useCallback(
     debounce(async (q) => {
-      if (q.length < 1) {
-        setResults([]);
-        setIsOpen(false);
+      const trimmed = q.trim();
+      if (trimmed.length < 1) {
+        setResults(POPULAR_STATIONS);
+        setIsOpen(true);
+        setLoading(false);
         return;
       }
+
+      // Check client memory cache
+      if (cacheRef.current.has(trimmed.toLowerCase())) {
+        if (latestQueryRef.current === trimmed) {
+          setResults(cacheRef.current.get(trimmed.toLowerCase()));
+          setIsOpen(true);
+          setLoading(false);
+        }
+        return;
+      }
+
       setLoading(true);
       try {
-        const data = await searchStations(q, 8);
-        setResults(data.stations || []);
-        setIsOpen(true);
-        setActiveIndex(-1);
+        const data = await searchStations(trimmed, 8);
+        const stations = data.stations || [];
+        cacheRef.current.set(trimmed.toLowerCase(), stations);
+
+        // Only update if this request matches the latest input
+        if (latestQueryRef.current === trimmed) {
+          setResults(stations);
+          setIsOpen(true);
+          setActiveIndex(-1);
+        }
       } catch (err) {
         console.error('Station search failed:', err);
-        setResults([]);
+        if (latestQueryRef.current === trimmed) {
+          setResults([]);
+        }
       } finally {
-        setLoading(false);
+        if (latestQueryRef.current === trimmed) {
+          setLoading(false);
+        }
       }
-    }, 300),
+    }, 100),
     []
   );
 
   const handleInputChange = (e) => {
     const val = e.target.value;
     setQuery(val);
+    latestQueryRef.current = val.trim();
     if (value) onChange(null); // Clear selection when typing
+
+    if (!val.trim()) {
+      setResults(POPULAR_STATIONS);
+      setIsOpen(true);
+      setLoading(false);
+      return;
+    }
+
+    // Instant local cache hit
+    if (cacheRef.current.has(val.trim().toLowerCase())) {
+      setResults(cacheRef.current.get(val.trim().toLowerCase()));
+      setIsOpen(true);
+      setLoading(false);
+      return;
+    }
+
     debouncedSearch(val);
+  };
+
+  const handleFocus = () => {
+    if (!value && !query.trim()) {
+      setResults(POPULAR_STATIONS);
+      setIsOpen(true);
+    } else if (results.length > 0) {
+      setIsOpen(true);
+    }
   };
 
   const handleSelect = (station) => {
@@ -121,7 +181,7 @@ export default function StationAutocomplete({
           value={displayValue}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          onFocus={() => { if (results.length > 0) setIsOpen(true); }}
+          onFocus={handleFocus}
           autoComplete="off"
           style={{
             paddingRight: '40px',
@@ -168,6 +228,19 @@ export default function StationAutocomplete({
           overflowY: 'auto',
           animation: 'slideDown 0.2s ease-out',
         }}>
+          {!query.trim() && (
+            <div style={{
+              padding: '8px 16px 4px',
+              fontSize: '11px',
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              color: 'var(--text-tertiary)',
+              borderBottom: '1px solid var(--border-subtle)',
+            }}>
+              Popular Hubs
+            </div>
+          )}
           {results.map((station, idx) => (
             <button
               key={station.code}

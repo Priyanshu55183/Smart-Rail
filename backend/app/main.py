@@ -58,6 +58,14 @@ async def lifespan(app: FastAPI):
     else:
         print("⏭️  Skipping seed (set SEED_ON_STARTUP=true in .env to seed)")
 
+    # 1c. Warm in-memory station cache for instant autocomplete
+    try:
+        from app.api.stations import get_or_load_all_stations
+        cached_stations = await get_or_load_all_stations()
+        print(f"⚡ Preloaded {len(cached_stations)} stations into ultra-fast memory cache")
+    except Exception as e:
+        print(f"⚠️  Station cache preload skipped: {e}")
+
     # 2. Redis
     print("🔴 Connecting to Redis...")
     try:

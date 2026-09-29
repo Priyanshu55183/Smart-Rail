@@ -23,7 +23,14 @@ The delay generation uses realistic patterns:
 
 import asyncio
 import random
+import sys
 from datetime import date, time, timedelta
+
+if hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -172,7 +179,7 @@ async def seed_trains_and_stops(
 
             station_id = station_map.get(s_code)
             if station_id is None:
-                print(f"   ⚠️  Station '{s_code}' not found for train {number}, skipping stop")
+                print(f"   [WARN] Station '{s_code}' not found for train {number}, skipping stop")
                 continue
 
             arr_time = _parse_time(arr_str)
